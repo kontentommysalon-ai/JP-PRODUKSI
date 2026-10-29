@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Pesanan Anda</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen font-sans">
+
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div class="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">P</div>
+        <span class="font-bold text-lg text-gray-900 tracking-tight">StatusProduksi</span>
+      </div>
+      <a href="https://wa.me/0895360978437" target="_blank" class="text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+        <i class="fab fa-whatsapp mr-1"></i> Bantuan CS
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-4 space-y-5">
+    
+    <!-- Box Lacak -->
+    <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+      <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Masukkan ID Lacak Pesanan</label>
+      <div class="flex gap-2">
+        <input type="text" id="orderInput" placeholder="Contoh: ORD-1001" class="flex-1 bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium uppercase focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="lacakPesanan()" class="bg-blue-600 text-white font-medium px-5 py-2.5 rounded-xl hover:bg-blue-700 text-sm transition">
+          Lacak
+        </button>
+      </div>
+    </section>
+
+    <!-- Hasil Tracking Realtime -->
+    <div id="trackingResult" class="hidden space-y-5">
+      
+      <!-- Card Info -->
+      <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <div id="statusBadge" class="inline-block px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-700 mb-3">
+          Status Memuat...
+        </div>
+        <h2 id="productTitle" class="text-xl font-bold text-gray-900 mb-1">-</h2>
+        <p class="text-xs text-gray-500 mb-3">ID Order: <span id="displayOrderId" class="font-mono font-medium text-gray-700">-</span></p>
+
+        <div class="pt-3 border-t border-gray-100 text-xs">
+          <span class="text-gray-400 block mb-0.5">Pemesan</span>
+          <span id="customerName" class="font-semibold text-gray-800">-</span>
+        </div>
+      </section>
+
+      <!-- Timeline Status -->
+      <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <h3 class="text-sm font-bold text-gray-900 mb-5">Progres Pengerjaan</h3>
+        
+        <div class="space-y-6 relative before:absolute before:inset-0 before:left-[15px] before:w-0.5 before:bg-gray-200 before:z-0">
+          <div class="flex items-start gap-4 relative z-10" id="step1">
+            <div class="step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-400 border border-gray-300">1</div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900">Pesanan Diterima</p>
+              <p class="text-xs text-gray-500">Masuk dalam antrean produksi</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 relative z-10" id="step2">
+            <div class="step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-400 border border-gray-300">2</div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900">Persiapan Bahan / Desain</p>
+              <p class="text-xs text-gray-500">Bahan & persiapan alat</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 relative z-10" id="step3">
+            <div class="step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-400 border border-gray-300">3</div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900">Proses Produksi</p>
+              <p class="text-xs text-gray-500">Susun Cetak / Pencetakan / Press</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-4 relative z-10" id="step4">
+            <div class="step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-400 border border-gray-300">4</div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900">QC & Siap Kirim</p>
+              <p class="text-xs text-gray-500">Pemeriksaan kualitas & packing</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Catatan Workshop -->
+      <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Update dari Workshop</h3>
+        <p id="adminNote" class="text-xs text-gray-700 bg-gray-50 p-3 rounded-xl border border-gray-200">
+          Belum ada catatan.
+        </p>
+      </section>
+
+    </div>
+
+    <!-- Error State -->
+    <div id="notFound" class="hidden bg-white p-6 rounded-2xl border border-gray-200 text-center">
+      <p class="text-xs text-red-500 font-semibold">Pesanan tidak ditemukan. Periksa kembali ID Anda.</p>
+    </div>
+
+  </main>
+
+  <script>
+    // GANTI URL DI BAWAH INI DENGAN URL FIREBASE DATABASE ANDA! (Sama seperti admin.html)
+    const FIREBASE_URL = "https://proses-produksi-default-rtdb.firebaseio.com/";
+
+    firebase.initializeApp({ databaseURL: FIREBASE_URL });
+    const db = firebase.database();
+    let currentRef = null;
+
+    function lacakPesanan() {
+      const orderId = document.getElementById('orderInput').value.trim().toUpperCase();
+      if (!orderId) return;
+
+      if (currentRef) currentRef.off();
+
+      currentRef = db.ref('orders/' + orderId);
+      currentRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          renderData(data, orderId);
+        } else {
+          document.getElementById('trackingResult').classList.add('hidden');
+          document.getElementById('notFound').classList.remove('hidden');
+        }
+      });
+    }
+
+    function renderData(order, id) {
+      document.getElementById('trackingResult').classList.remove('hidden');
+      document.getElementById('notFound').classList.add('hidden');
+
+      document.getElementById('displayOrderId').innerText = id;
+      document.getElementById('productTitle').innerText = order.product;
+      document.getElementById('customerName').innerText = order.customer;
+      document.getElementById('adminNote').innerText = order.note || 'Tidak ada catatan tambahan.';
+
+      const step = parseInt(order.stage || 1);
+      const stageTitles = ['Pesanan Diterima', 'Persiapan Bahan', 'Proses Produksi', 'QC & Siap Kirim'];
+      document.getElementById('statusBadge').innerText = stageTitles[step - 1];
+
+      for (let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById(`step${i}`);
+        const iconEl = stepEl.querySelector('.step-icon');
+        
+        if (i <= step) {
+          iconEl.className = 'step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-emerald-500 text-white shadow-sm';
+          iconEl.innerHTML = '<i class="fas fa-check"></i>';
+        } else {
+          iconEl.className = 'step-icon w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-gray-100 text-gray-400 border border-gray-300';
+          iconEl.innerHTML = i;
+        }
+      }
+    }
+  </script>
+</body>
+</html>

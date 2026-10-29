@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard Produksi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen font-sans">
+
+  <header class="bg-slate-900 text-white sticky top-0 z-10 shadow">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+      <span class="font-bold text-base tracking-tight"><i class="fas fa-tools text-amber-500 mr-2"></i>Dashboard Pemilik Workshop</span>
+      <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Mode Admin</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4 space-y-6">
+    <!-- Form Tambah Pesanan -->
+    <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+      <h2 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <i class="fas fa-plus-circle text-blue-600"></i> Buat Pesanan Baru
+      </h2>
+      <form id="addOrderForm" onsubmit="addOrder(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">ID Pesanan / Lacak</label>
+          <input type="text" id="newId" placeholder="JP-01" required class="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs uppercase font-medium focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Nama Customer</label>
+          <input type="text" id="newCustomer" placeholder="ci ita" required class="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Nama Produk</label>
+          <input type="text" id="newProduct" placeholder="Sablon DTF Kaos " required class="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-blue-600 text-white font-medium py-2 rounded-xl hover:bg-blue-700 active:scale-95 text-xs transition">
+            Simpan Pesanan
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Daftar Pesanan Aktif -->
+    <section class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+      <h2 class="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <i class="fas fa-tasks text-blue-600"></i> Daftar Pesanan & Kontrol Status Realtime
+      </h2>
+      <div class="space-y-4" id="orderList"></div>
+    </section>
+  </main>
+
+  <script>
+    // GANTI URL DI BAWAH INI DENGAN URL FIREBASE DATABASE ANDA!
+    const FIREBASE_URL = "https://proses-produksi-default-rtdb.firebaseio.com/";
+
+    firebase.initializeApp({ databaseURL: FIREBASE_URL });
+    const db = firebase.database();
+
+    function loadOrders() {
+      db.ref('orders').on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        renderOrderList(data);
+      });
+    }
+
+    function renderOrderList(orders) {
+      const container = document.getElementById('orderList');
+      container.innerHTML = '';
+      const keys = Object.keys(orders);
+
+      if (keys.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-400 text-center py-6">Belum ada pesanan terdaftar.</p>`;
+        return;
+      }
+
+      keys.forEach(id => {
+        const item = orders[id];
+        const card = document.createElement('div');
+        card.className = "p-4 border border-gray-200 rounded-xl bg-gray-50 space-y-3";
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="font-mono text-xs font-bold text-blue-600">${id}</span>
+              <h3 class="text-sm font-bold text-gray-900">${item.product}</h3>
+              <p class="text-xs text-gray-500">Customer: <span class="text-gray-800 font-medium">${item.customer}</span></p>
+            </div>
+            <button onclick="deleteOrder('${id}')" class="text-red-500 hover:text-red-700 text-xs px-2.5 py-1 rounded-lg bg-red-50 border border-red-100">
+              <i class="fas fa-trash"></i> Hapus
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-gray-200">
+            <div>
+              <label class="block text-[11px] font-semibold text-gray-500 mb-1">Tahap Produksi Saat Ini</label>
+              <select onchange="updateStage('${id}', this.value)" class="w-full bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-blue-500">
+                <option value="1" ${item.stage == 1 ? 'selected' : ''}>1. Pesanan Diterima</option>
+                <option value="2" ${item.stage == 2 ? 'selected' : ''}>2. Persiapan Bahan / Desain</option>
+                <option value="3" ${item.stage == 3 ? 'selected' : ''}>3. Proses Produksi / Cetak</option>
+                <option value="4" ${item.stage == 4 ? 'selected' : ''}>4. QC & Siap Dikirim</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-gray-500 mb-1">Update Catatan untuk Customer</label>
+              <div class="flex gap-1">
+                <input type="text" id="note-${id}" value="${item.note || ''}" placeholder="Contoh: Kain sudah dipotong..." class="flex-1 bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs">
+                <button onclick="saveNote('${id}')" class="bg-slate-800 text-white px-3 rounded-lg text-xs font-medium hover:bg-slate-900">Simpan</button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function addOrder(e) {
+      e.preventDefault();
+      const id = document.getElementById('newId').value.trim().toUpperCase();
+      const customer = document.getElementById('newCustomer').value.trim();
+      const product = document.getElementById('newProduct').value.trim();
+
+      db.ref('orders/' + id).set({
+        customer: customer,
+        product: product,
+        stage: 1,
+        note: "Pesanan telah diterima dan sedang diproses."
+      });
+
+      document.getElementById('addOrderForm').reset();
+    }
+
+    function updateStage(id, stageVal) {
+      db.ref('orders/' + id + '/stage').set(parseInt(stageVal));
+    }
+
+    function saveNote(id) {
+      const noteText = document.getElementById(`note-${id}`).value;
+      db.ref('orders/' + id + '/note').set(noteText);
+      alert('Catatan berhasil dikirim ke customer!');
+    }
+
+    function deleteOrder(id) {
+      if (confirm(`Hapus pesanan ${id}?`)) {
+        db.ref('orders/' + id).remove();
+      }
+    }
+
+    window.onload = loadOrders;
+  </script>
+</body>
+</html>
